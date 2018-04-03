@@ -1,5 +1,5 @@
 /**
- * icmp_tunnel.c
+ * mp_tunnel.c
  */
 
 #include "tunnel.h"
