@@ -84,8 +84,7 @@ static char args_doc[] = "";
  */
 static struct argp_option options[] = {
 	{ "server", 's', NULL, 0, "Run as a server." },
-	{ "client", 'c', NULL, 0, "Run as a client. Default = client." },
-	{ "host", 'h', "HOST", 0, "Hostname or IP address of the AT2220 modem. Default = 'localhost'"},
+	{ "client", 'c', "HOSTNAME", 0, "Run as a client. Default = localhost" },
 	{ "tun", 't', "TUN", 0, "Tun name. Default = 'tun0'"},
 	{ "src", 'i', "SOURCE", 0, "Source IP to send from. Client mode only. Can (and should) specify multiple interfaces."},
 	{ "foreground", 'f', NULL, 0, "Run in the foreground."},
@@ -110,15 +109,12 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 		case 's':
 		{
 			args->server = 1;
+			args->host = NULL;
 			break;
 		}
 		case 'c':
 		{
 			args->server = 0;
-			break;
-		}
-		case 'h':
-		{
 			args->host = arg;
 			break;
 		}
@@ -325,7 +321,7 @@ static void handle_tun(int fd, void *user_data)
 
 	int len = read(fd, buf, 1500);
 
-	mptunnel_debug("[DEBUG] Just read %d bytes from the tun\n", len);
+	mptunnel_debug("[DEBUG] READ %d bytes from the tun\n", len);
 
 	int i;
 	for(i = 0; i < MAXCONS; i++)
@@ -352,7 +348,7 @@ static void handle_udp_socket_client(int fd, void *user_data)
 	// Write the message to the tun for debug
 	write(tun_fd, recv_buf, msg_len);
 
-	mptunnel_debug("[DEBUG] Just wrote %d bytes to the tun\n", msg_len);
+	mptunnel_debug("[DEBUG] WROTE %d bytes to the tun\n", msg_len);
 	//fwrite(recv_buf, msg_len, 1, stdout);
 }
 
@@ -368,7 +364,10 @@ static void handle_udp_socket(int fd, void *user_data)
 		do_error("[ERROR] Error while receiving a message");
 
 	// Write the message to stdout
-	fwrite(recv_buf, msg_len, 1, stdout);
+	//fwrite(recv_buf, msg_len, 1, stdout);
+	write(tun_fd, recv_buf, msg_len);
+
+	mptunnel_debug("[DEBUG] WROTE %d bytes to the tun\n", msg_len);
 
 	cxn_ctx *cxn;
 
@@ -431,6 +430,7 @@ static void configure_server(void)
 	if(-1 == bind(server_sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)))
 		do_error("[ERROR] Unable to bind");
 
+	fcntl(server_sockfd, F_SETFL, O_NONBLOCK);
 	add_event(server_sockfd, handle_udp_socket, NULL);
 
 	mptunnel_debug("[DEBUG] Listening on port %d\n", BIND_PORT);
@@ -490,6 +490,8 @@ static int create_socket(const char *node, const char *service) /* {{{ */
 		if(-1 == bind(fd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)))
 			do_error("[ERROR] Unable to bind");
 
+		fcntl(fd, F_SETFL, O_NONBLOCK);
+
 		// Add this as a connection in the connection list
 		add_cxn(ai_ptr->ai_addr, ai_ptr->ai_addrlen, fd);
 
@@ -531,6 +533,7 @@ int main(int argc, char *argv[])
 
 	// Allocate the tunnel
 	tun_fd = tun_alloc("tun0", IFF_TUN | IFF_NO_PI);
+	fcntl(tun_fd, F_SETFL, O_NONBLOCK);
 	add_event(tun_fd, handle_tun, NULL);
 
 	configure_network(args.server);
