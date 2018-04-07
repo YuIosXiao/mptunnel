@@ -84,9 +84,9 @@ static char args_doc[] = "";
  */
 static struct argp_option options[] = {
 	{ "server", 's', NULL, 0, "Run as a server." },
-	{ "client", 'c', "HOSTNAME", 0, "Run as a client. Default = localhost" },
+	{ "client", 'c', "SERVER", 0, "Run as a client and specify server. Default = client mode + localhost" },
 	{ "tun", 't', "TUN", 0, "Tun name. Default = 'tun0'"},
-	{ "src", 'i', "SOURCE", 0, "Source IP to send from. Client mode only. Can (and should) specify multiple interfaces."},
+	{ "interface", 'i', "INTERFACE", 0, "Source IP to send from. Client mode only. Can (and should) specify multiple interfaces."},
 	{ "foreground", 'f', NULL, 0, "Run in the foreground."},
 	{ NULL } // Needs to be NULL terminated
 };
@@ -126,7 +126,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 		case 'i':
 		{
 			args->ips[args->ip_count] = arg;
-			mptunnel_debug("[DEBUG] Binding to %s\n", arg);
+			args->ip_count ++;
 			break;
 		}
 		case 'f':
@@ -437,7 +437,7 @@ static void configure_server(void)
 	mptunnel_debug("[DEBUG] Listening on port %d\n", BIND_PORT);
 }
 
-static int create_socket(const char *node, const char *service) /* {{{ */
+static int create_socket(const char *node, const char *service, const char *dev) /* {{{ */
 {
 	struct addrinfo  ai_hint;
 	struct addrinfo *ai_list;
@@ -493,6 +493,13 @@ static int create_socket(const char *node, const char *service) /* {{{ */
 
 		fcntl(fd, F_SETFL, O_NONBLOCK);
 
+		struct ifreq ifr;
+
+		memset(&ifr, 0, sizeof(ifr));
+		snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), dev);
+		if (setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, (void *)&ifr, sizeof(ifr)) < 0)
+			do_error("setsockopt()");
+
 		// Add this as a connection in the connection list
 		add_cxn(ai_ptr->ai_addr, ai_ptr->ai_addrlen, fd);
 
@@ -513,8 +520,13 @@ static int create_socket(const char *node, const char *service) /* {{{ */
  */
 void configure_client(args_t *args)
 {
-	int fd = create_socket(args->host, "5000");
-	add_event(fd, handle_udp_socket_client, NULL);
+	int i;
+	for(i = 0; i < args->ip_count; i++)
+	{
+		mptunnel_debug("[DEBUG] Binding to %s\n", args->ips[i]);
+		int fd = create_socket(args->host, "5000", args->ips[i]);
+		add_event(fd, handle_udp_socket_client, NULL);
+	}
 }
 
 int main(int argc, char *argv[])
