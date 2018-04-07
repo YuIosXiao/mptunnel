@@ -300,7 +300,8 @@ static void add_event(int fd, event_handler handler, void *user_data)
 
 	struct epoll_event event;
 	event.data.ptr = parcel;
-	event.events = EPOLLIN | EPOLLET;
+	//event.events = EPOLLIN | EPOLLET;
+	event.events = EPOLLIN;
 	if(-1 == epoll_ctl(efd, EPOLL_CTL_ADD, fd, &event))
 		do_error("[ERROR] epoll_ctl");
 }
