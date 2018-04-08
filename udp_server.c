@@ -480,16 +480,16 @@ static int create_socket(const char *node, const char *service, const char *dev)
 		}
 
 		// Configure the bind address and port
-		struct sockaddr_in serv_addr;
-		memset(&serv_addr, '0', sizeof(serv_addr));
+		//struct sockaddr_in serv_addr;
+		//memset(&serv_addr, '0', sizeof(serv_addr));
 
-		serv_addr.sin_family = AF_INET;
-		serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-		serv_addr.sin_port = htons(BIND_PORT);
+		//serv_addr.sin_family = AF_INET;
+		//serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+		//serv_addr.sin_port = htons(BIND_PORT);
 
 		// Bind to local address and port
-		if(-1 == bind(fd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)))
-			do_error("[ERROR] Unable to bind");
+		//if(-1 == bind(fd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)))
+		//	do_error("[ERROR] Unable to bind");
 
 		fcntl(fd, F_SETFL, O_NONBLOCK);
 
