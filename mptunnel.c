@@ -437,7 +437,7 @@ static void configure_server(void)
 	mptunnel_debug("[DEBUG] Listening on port %d\n", BIND_PORT);
 }
 
-static int create_socket(const char *node, const char *service, const char *dev) /* {{{ */
+static int create_socket(const char *node, const char *service, const char *local_addr)
 {
 	struct addrinfo  ai_hint;
 	struct addrinfo *ai_list;
@@ -480,25 +480,16 @@ static int create_socket(const char *node, const char *service, const char *dev)
 		}
 
 		// Configure the bind address and port
-		//struct sockaddr_in serv_addr;
-		//memset(&serv_addr, '0', sizeof(serv_addr));
+		struct sockaddr_in serv_addr;
+		memset(&serv_addr, 0, sizeof(serv_addr));
 
-		//serv_addr.sin_family = AF_INET;
-		//serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-		//serv_addr.sin_port = htons(BIND_PORT);
+		serv_addr.sin_family = AF_INET;
+		serv_addr.sin_addr.s_addr = inet_addr(local_addr);
+		serv_addr.sin_port = htons(BIND_PORT);
 
 		// Bind to local address and port
-		//if(-1 == bind(fd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)))
-		//	do_error("[ERROR] Unable to bind");
-
-		fcntl(fd, F_SETFL, O_NONBLOCK);
-
-		struct ifreq ifr;
-
-		memset(&ifr, 0, sizeof(ifr));
-		snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), dev);
-		if (setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, (void *)&ifr, sizeof(ifr)) < 0)
-			do_error("setsockopt()");
+		if(-1 == bind(fd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)))
+			do_error("[ERROR] Unable to bind");
 
 		// Add this as a connection in the connection list
 		add_cxn(ai_ptr->ai_addr, ai_ptr->ai_addrlen, fd);
